@@ -1,0 +1,18 @@
+name: mysql
+version: 0.1
+description: Fast, reliable, scalable, and easy to use open-source relational database from rhscl
+  system.
+keywords:
+- mysql
+- database
+- sql
+home: https://www.softwarecollections.org/en/scls/rhscl/rh-mysql56/
+icon: https://raw.githubusercontent.com/openshift/origin-web-console/enterprise-3.9/app/images/logos/mysql-database.svg
+sources:
+- https://github.com/rgordill/helm-repo
+- https://hub.docker.com/r/centos/mysql-56-centos7/
+- https://access.redhat.com/containers/#/registry.access.redhat.com/rhscl/mysql-56-rhel7
+maintainers:
+- name: Ramon Gordillo
+  email: ramon.gordillo@redhat.com
+engine: gotpl

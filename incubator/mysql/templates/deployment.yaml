@@ -1,0 +1,100 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "mysql.fullname" . }}
+  labels:
+    app: {{ template "mysql.fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+spec:
+  template:
+    metadata:
+      labels:
+        app: {{ template "mysql.fullname" . }}
+    spec:
+      containers:
+      - name: {{ template "mysql.fullname" . }}
+{{- if (eq "centos" .Values.image.base) }}
+        image: "centos/mysql-{{ .Values.image.version }}-centos7:latest"
+{{- else if (eq "rhel" .Values.image.base) }}
+        image: "registry.access.redhat.com/rhscl/mysql-{{ .Values.image }}-rhel7:latest"
+{{- end }}
+        imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "mysql.fullname" . }}
+              key: database-root-password
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "mysql.fullname" . }}
+              key: database-password
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "mysql.fullname" . }}
+              key: database-user
+        - name: MYSQL_DATABASE
+            secretKeyRef:
+              name: {{ template "mysql.fullname" . }}
+              key: database-user
+          value: {{ default "sampledb" .Values.mysqlDatabase | quote }}
+        ports:
+        - name: mysql
+          containerPort: 3306
+        livenessProbe:
+          exec:
+            command:
+            {{- if .Values.mysqlAllowEmptyPassword }}
+            - mysqladmin
+            - ping
+            {{- else }}
+            - sh
+            - -c
+            - "mysqladmin ping -u root -p${MYSQL_ROOT_PASSWORD}"
+            {{- end }}
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.livenessProbe.successThreshold }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+        readinessProbe:
+          exec:
+            command:
+            - "/bin/sh"
+            - "-i"
+            - -c
+            - "MYSQL_PWD=\"$MYSQL_PASSWORD\" mysql -h 127.0.0.1 -u $MYSQL_USER -D $MYSQL_DATABASE -e 'SELECT 1'"
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+          {{- if .Values.persistence.subPath }}
+          subPath: {{ .Values.persistence.subPath }}
+          {{- end }}
+        {{- if .Values.configurationFiles }}
+        - name: configurations
+          mountPath: /etc/my.cnf.d/
+        {{- end }}
+      volumes:
+      {{- if .Values.configurationFiles }}
+      - name: configurations
+        configMap:
+          name: {{ template "mysql.fullname" . }}
+      {{- end }}
+      - name: data
+      {{- if .Values.persistence.enabled }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.persistence.existingClaim | default (include "mysql.fullname" .) }}
+      {{- else }}
+        emptyDir: {}
+      {{- end -}}
