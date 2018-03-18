@@ -2,8 +2,8 @@
 ## ref: https://github.com/sclorg/mysql-container
 ##
 image: 
-  base: "centos"
-  version: "5.7"
+  base: centos
+  version: "57"
 
 ## Specify password for root user
 ##

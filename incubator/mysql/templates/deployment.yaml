@@ -16,9 +16,11 @@ spec:
       containers:
       - name: {{ template "mysql.fullname" . }}
 {{- if (eq "centos" .Values.image.base) }}
-        image: "centos/mysql-{{ .Values.image.version }}-centos7:latest"
+        image: "docker.io/centos/mysql-{{ .Values.image.version }}-centos7:latest"
 {{- else if (eq "rhel" .Values.image.base) }}
-        image: "registry.access.redhat.com/rhscl/mysql-{{ .Values.image }}-rhel7:latest"
+        image: "registry.access.redhat.com/rhscl/mysql-{{ .Values.image.version }}-rhel7:latest"
+{{- else }}
+        image: "registry.fedoraproject.org/rhscl/mysql-{{ .Values.image.version }}-f27:latest"
 {{- end }}
         imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
         resources:
@@ -40,24 +42,17 @@ spec:
               name: {{ template "mysql.fullname" . }}
               key: database-user
         - name: MYSQL_DATABASE
+          valueFrom:
             secretKeyRef:
               name: {{ template "mysql.fullname" . }}
-              key: database-user
-          value: {{ default "sampledb" .Values.mysqlDatabase | quote }}
+              key: database-name
         ports:
         - name: mysql
           containerPort: 3306
         livenessProbe:
-          exec:
-            command:
-            {{- if .Values.mysqlAllowEmptyPassword }}
-            - mysqladmin
-            - ping
-            {{- else }}
-            - sh
-            - -c
-            - "mysqladmin ping -u root -p${MYSQL_ROOT_PASSWORD}"
-            {{- end }}
+          tcpSocket: {
+            port: 3306
+          }
           initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
           periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
           timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
